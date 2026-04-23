@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ponto">
+<link rel="manifest" href="manifest.json">
+<title>Controle de Ponto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0f172a;
+    --surface:  #1e293b;
+    --surface2: #263348;
+    --border:   #334155;
+    --accent:   #3b82f6;
+    --accent2:  #60a5fa;
+    --green:    #22c55e;
+    --red:      #ef4444;
+    --yellow:   #f59e0b;
+    --text:     #f1f5f9;
+    --muted:    #94a3b8;
+    --sat:      #fbbf24;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); overscroll-behavior: none; }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px 10px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; flex-direction: column; }
+  .app-title { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--accent2); letter-spacing: 0.05em; }
+  .month-label { font-size: 18px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .header-right { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); font-size: 18px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .icon-btn:active { background: var(--border); }
+
+  /* ── Nav tabs ── */
+  nav {
+    display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 8px;
+  }
+  .tab {
+    flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; font-weight: 500;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.15s; letter-spacing: 0.03em;
+  }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  /* ── Main content ── */
+  main { flex: 1; overflow-y: auto; padding: 12px 12px; padding-bottom: calc(80px + var(--safe-bottom)); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  .card-header {
+    padding: 10px 14px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ── Saldo banner ── */
+  .saldo-banner {
+    border-radius: 14px; padding: 16px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .saldo-item { display: flex; flex-direction: column; align-items: center; }
+  .saldo-label { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+  .saldo-value { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
+  .saldo-value.pos { color: var(--green); }
+  .saldo-value.neg { color: var(--red); }
+  .saldo-value.zero { color: var(--muted); }
+  .saldo-divider { width: 1px; background: var(--border); }
+
+  /* ── Day list ── */
+  .day-item {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .day-item:last-child { border-bottom: none; }
+  .day-item:active { background: var(--surface2); }
+  .day-item.saturday .day-dot { background: var(--sat); }
+  .day-item.today { background: rgba(59,130,246,0.06); }
+  .day-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .day-dot.filled { background: var(--accent); }
+  .day-dot.sat-work { background: var(--sat); }
+  .day-info { flex: 1; min-width: 0; }
+  .day-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .day-name span { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .day-hours { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .day-saldo { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+  .day-saldo.pos { color: var(--green); }
+  .day-saldo.neg { color: var(--red); }
+  .day-saldo.zero { color: var(--muted); }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: calc(16px + var(--safe-bottom)); right: 16px;
+    width: 56px; height: 56px; border-radius: 16px; border: none;
+    background: var(--accent); color: white; font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 4px 20px rgba(59,130,246,0.5);
+    transition: transform 0.15s, box-shadow 0.15s; z-index: 50;
+  }
+  .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(59,130,246,0.4); }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 200; align-items: flex-end; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; animation: fadeIn 0.15s; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  .modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    width: 100%; max-width: 480px; padding: 0;
+    animation: slideUp 0.25s cubic-bezier(0.32,0.72,0,1);
+    padding-bottom: var(--safe-bottom);
+    max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 0; }
+  .modal-title { font-size: 16px; font-weight: 600; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+  .modal-body { padding: 14px 16px; }
+  .modal-footer { padding: 10px 16px 14px; display: flex; gap: 10px; }
+
+  /* ── Form fields ── */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px; color: var(--text); font-family: var(--font-body);
+    font-size: 15px; outline: none; transition: border-color 0.15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input[type="time"] { font-family: var(--font-mono); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+  .toggle-label { font-size: 14px; color: var(--text); }
+  .toggle { width: 44px; height: 24px; background: var(--border); border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* ── Buttons ── */
+  .btn {
+    flex: 1; padding: 13px; border-radius: 12px; border: none; font-family: var(--font-body);
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* ── Stats page ── */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-val { font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+
+  /* ── Config page ── */
+  .config-section { margin-bottom: 16px; }
+  .config-section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; padding-left: 4px; }
+  .config-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .config-day { font-size: 13px; font-weight: 600; color: var(--text); }
+  .config-schedule { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .config-hours { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.04em; }
+  .badge-sat { background: rgba(251,191,36,0.15); color: var(--sat); }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; line-height: 1.5; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Section separator ── */
+  .section-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 4px 4px; }
+
+  .day-item.folga { opacity: 0.5; }
+  .chip { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 5px; margin-left: 4px; font-weight: 600; }
+  .chip-folga { background: rgba(148,163,184,0.2); color: var(--muted); }
+  .chip-feriado { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .chip-sat { background: rgba(251,191,36,0.15); color: var(--sat); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="header-left">
+      <span class="app-title">PONTO //</span>
+      <span class="month-label" id="headerMonth">—</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="btnPrevMonth" title="Mês anterior">‹</button>
+      <button class="icon-btn" id="btnNextMonth" title="Próximo mês">›</button>
+    </div>
+  </header>
+
+  <nav>
+    <div class="tab active" data-tab="registro">Registro</div>
+    <div class="tab" data-tab="resumo">Resumo</div>
+    <div class="tab" data-tab="config">Config</div>
+  </nav>
+
+  <main id="mainContent"></main>
+
+  <button class="fab" id="fabBtn" title="Registrar ponto">+</button>
+</div>
+
+<!-- Modal: registro de ponto -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Registrar Ponto</div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Data</label>
+        <input type="date" id="fieldDate">
+      </div>
+      <div id="satToggleWrap" style="display:none">
+        <div class="toggle-row">
+          <span class="toggle-label">🟡 Sábado trabalhado?</span>
+          <div class="toggle" id="satToggle"></div>
+        </div>
+      </div>
+      <div id="turnoFields">
+        <div class="section-label">1º Turno</div>
+        <div class="field-row">
+          <div class="field"><label>Entrada</label><input type="time" id="e1"></div>
+          <div class="field"><label>Saída</label><input type="time" id="s1"></div>
+        </div>
+        <div class="section-label">2º Turno <span style="font-size:10px;color:var(--muted);font-weight:400">(opcional)</span></div>
+        <div class="field-row">
+          <div class="field"><label>Entrada</label><input type="time" id="e2"></div>
+          <div class="field"><label>Saída</label><input type="time" id="s2"></div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:4px">
+        <label>Observação</label>
+        <select id="fieldObs">
+          <option value="">Nenhuma</option>
+          <option value="Folga">Folga</option>
+          <option value="Feriado">Feriado</option>
+          <option value="Atestado">Atestado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancel">Cancelar</button>
+      <button class="btn btn-danger" id="btnDelete" style="display:none">Excluir</button>
+      <button class="btn btn-primary" id="btnSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const SCHEDULE = {
+  1: { label: 'Segunda', carga: 3*60,    ref: '19:00–22:00' },
+  2: { label: 'Terça',   carga: 7*60,    ref: '13:40–17:40 + 19:00–22:00' },
+  3: { label: 'Quarta',  carga: 7*60,    ref: '13:40–17:40 + 19:00–22:00' },
+  4: { label: 'Quinta',  carga: 7*60,    ref: '13:40–17:40 + 19:00–22:00' },
+  5: { label: 'Sexta',   carga: 6*60,    ref: '14:00–17:00 + 19:00–22:00' },
+  6: { label: 'Sábado',  carga: 3*60,    ref: '14:00–17:00' },
+  0: { label: 'Domingo', carga: 0,       ref: '—' },
+};
+const STORAGE_KEY = 'ponto_registros_v2';
+const CONFIG_KEY  = 'ponto_config_v1';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let currentYear, currentMonth;
+let registros = {};   // key: "YYYY-MM-DD" → { e1, s1, e2, s2, obs, satWork }
+let config = {};
+let activeTab = 'registro';
+let editingDate = null;
+let satToggleState = false;
+
+// ── Storage ────────────────────────────────────────────────────────────────
+function load() {
+  try { registros = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { registros = {}; }
+  try { config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}'); } catch { config = {}; }
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+// ── Time utils ─────────────────────────────────────────────────────────────
+function toMin(t) {
+  if (!t) return null;
+  const [h,m] = t.split(':').map(Number);
+  return h*60 + m;
+}
+function fromMin(m) {
+  if (m === null || m === undefined) return '—';
+  const neg = m < 0;
+  const abs = Math.abs(m);
+  const h = Math.floor(abs/60), min = abs%60;
+  return (neg ? '-' : '') + String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+}
+function calcWorked(reg) {
+  let t = 0;
+  if (reg.e1 && reg.s1) { const d = toMin(reg.s1) - toMin(reg.e1); if (d > 0) t += d; }
+  if (reg.e2 && reg.s2) { const d = toMin(reg.s2) - toMin(reg.e2); if (d > 0) t += d; }
+  return t;
+}
+function getCarga(dateStr, reg) {
+  if (!dateStr) return 0;
+  const obs = (reg?.obs || '').toLowerCase();
+  if (obs === 'folga' || obs === 'feriado' || obs === 'atestado') return 0;
+  const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun,6=Sat
+  const wd = dow === 0 ? 0 : dow; // keep as is; Mon=1..Sat=6,Sun=0
+  const dayIdx = dow; // 0=Sun,1=Mon,...,6=Sat
+  if (dayIdx === 6) return reg?.satWork ? SCHEDULE[6].carga : 0;
+  if (dayIdx === 0) return 0;
+  return SCHEDULE[dayIdx]?.carga || 0;
+}
+function dateKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function getDOW(dateStr) {
+  return new Date(dateStr + 'T12:00:00').getDay();
+}
+function isSaturday(dateStr) { return getDOW(dateStr) === 6; }
+function isSunday(dateStr) { return getDOW(dateStr) === 0; }
+
+// ── Month data ─────────────────────────────────────────────────────────────
+function getDaysInMonth(y, m) {
+  return new Date(y, m+1, 0).getDate();
+}
+function getMonthDays(y, m) {
+  const days = [];
+  const n = getDaysInMonth(y, m);
+  for (let d = 1; d <= n; d++) {
+    const key = dateKey(y, m, d);
+    const dow = getDOW(key);
+    if (dow === 0) continue; // skip sunday
+    days.push(key);
+  }
+  return days;
+}
+function calcMonthStats(y, m) {
+  const days = getMonthDays(y, m);
+  let totalWorked = 0, totalCarga = 0, saldo = 0;
+  let saldoAcum = 0;
+  const byDay = [];
+  for (const key of days) {
+    const reg = registros[key] || {};
+    const worked = calcWorked(reg);
+    const carga = getCarga(key, reg);
+    const diff = worked - carga;
+    saldoAcum += diff;
+    byDay.push({ key, worked, carga, diff, saldoAcum, reg });
+    totalWorked += worked;
+    totalCarga += carga;
+  }
+  return { days: byDay, totalWorked, totalCarga, saldo: totalWorked - totalCarga };
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+const MONTH_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DOW_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const DOW_LONG  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+function render() {
+  document.getElementById('headerMonth').textContent = `${MONTH_PT[currentMonth]} ${currentYear}`;
+  const el = document.getElementById('mainContent');
+  if (activeTab === 'registro')  el.innerHTML = renderRegistro();
+  if (activeTab === 'resumo')    el.innerHTML = renderResumo();
+  if (activeTab === 'config')    el.innerHTML = renderConfig();
+  attachListeners();
+}
+
+function renderRegistro() {
+  const { days, saldo } = calcMonthStats(currentYear, currentMonth);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const saldoClass = saldo > 0 ? 'pos' : saldo < 0 ? 'neg' : 'zero';
+  const saldoSign = saldo > 0 ? '+' : '';
+
+  let html = `
+  <div class="saldo-banner">
+    <div class="saldo-item">
+      <span class="saldo-label">Saldo do Mês</span>
+      <span class="saldo-value ${saldoClass}">${saldoSign}${fromMin(saldo)}</span>
+    </div>
+    <div class="saldo-divider"></div>
+    <div class="saldo-item">
+      <span class="saldo-label">Dias Reg.</span>
+      <span class="saldo-value" style="color:var(--accent2)">${days.filter(d=>d.worked>0).length}</span>
+    </div>
+  </div>
+  <div class="card">`;
+
+  if (days.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">Nenhum dia útil neste mês.</div></div>`;
+  } else {
+    for (const d of days) {
+      const reg = d.reg;
+      const dow = getDOW(d.key);
+      const isSat = dow === 6;
+      const dayNum = parseInt(d.key.slice(8));
+      const isToday = d.key === todayStr;
+      const hasData = d.worked > 0 || reg.obs;
+      const obs = reg.obs || '';
+      const diffClass = d.diff > 0 ? 'pos' : d.diff < 0 ? 'neg' : 'zero';
+      const diffStr = d.diff !== 0 ? (d.diff > 0 ? '+' : '') + fromMin(d.diff) : d.worked > 0 ? '+0:00' : '';
+      const dotClass = hasData ? (isSat ? 'sat-work' : 'filled') : '';
+      const todayClass = isToday ? ' today' : '';
+      const satClass = isSat ? ' saturday' : '';
+      const folgaClass = (obs === 'Folga' || obs === 'Feriado') ? ' folga' : '';
+
+      let hoursLine = '';
+      if (reg.e1 || reg.e2) {
+        const parts = [];
+        if (reg.e1 && reg.s1) parts.push(`${reg.e1}–${reg.s1}`);
+        if (reg.e2 && reg.s2) parts.push(`${reg.e2}–${reg.s2}`);
+        hoursLine = parts.join('  •  ');
+        if (d.worked > 0) hoursLine += `  (${fromMin(d.worked)})`;
+      } else if (obs) {
+        hoursLine = '';
+      } else {
+        hoursLine = `Carga: ${fromMin(d.carga)}`;
+      }
+
+      let chips = '';
+      if (obs === 'Folga') chips += '<span class="chip chip-folga">Folga</span>';
+      else if (obs === 'Feriado') chips += '<span class="chip chip-feriado">Feriado</span>';
+      else if (obs === 'Atestado') chips += '<span class="chip chip-folga">Atestado</span>';
+      if (isSat && reg.satWork) chips += '<span class="chip chip-sat">Sáb ✓</span>';
+
+      html += `
+      <div class="day-item${satClass}${todayClass}${folgaClass}" data-date="${d.key}">
+        <div class="day-dot ${dotClass}"></div>
+        <div class="day-info">
+          <div class="day-name">${String(dayNum).padStart(2,'0')} ${DOW_SHORT[dow]}${isToday ? ' <span style="color:var(--accent);font-size:10px">HOJE</span>' : ''}${chips}</div>
+          <div class="day-hours">${hoursLine}</div>
+        </div>
+        <span class="day-saldo ${diffClass}">${diffStr}</span>
+      </div>`;
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderResumo() {
+  const { days, totalWorked, totalCarga, saldo } = calcMonthStats(currentYear, currentMonth);
+  const saldoClass = saldo > 0 ? 'pos' : saldo < 0 ? 'neg' : 'zero';
+  const diasReg = days.filter(d => d.worked > 0).length;
+  const diasFolga = days.filter(d => d.reg.obs === 'Folga' || d.reg.obs === 'Feriado').length;
+
+  // running saldo chart data
+  const entries = days.filter(d => d.worked > 0 || d.reg.obs);
+
+  let html = `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Saldo do Mês</div><div class="stat-val ${saldoClass}">${saldo >= 0 ? '+' : ''}${fromMin(saldo)}</div></div>
+    <div class="stat-card"><div class="stat-label">Horas Trab.</div><div class="stat-val" style="color:var(--accent2)">${fromMin(totalWorked)}</div></div>
+    <div class="stat-card"><div class="stat-label">Carga Esperada</div><div class="stat-val" style="color:var(--muted)">${fromMin(totalCarga)}</div></div>
+    <div class="stat-card"><div class="stat-label">Dias Reg.</div><div class="stat-val" style="color:var(--text)">${diasReg}</div></div>
+  </div>`;
+
+  if (days.length > 0) {
+    // Saldo acumulado por dia (sparkline via inline SVG)
+    const vals = days.map(d => d.saldoAcum);
+    const minV = Math.min(...vals, 0);
+    const maxV = Math.max(...vals, 0);
+    const range = maxV - minV || 1;
+    const W = 320, H = 80, PAD = 10;
+    const n = vals.length;
+    const pts = vals.map((v, i) => {
+      const x = PAD + (i / (n-1 || 1)) * (W - 2*PAD);
+      const y = PAD + (1 - (v - minV) / range) * (H - 2*PAD);
+      return `${x},${y}`;
+    }).join(' ');
+    const zeroY = PAD + (1 - (0 - minV) / range) * (H - 2*PAD);
+
+    html += `
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-header"><span class="card-title">Saldo Acumulado</span></div>
+      <div style="padding:10px 8px 6px">
+        <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+          <line x1="${PAD}" y1="${zeroY}" x2="${W-PAD}" y2="${zeroY}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
+          <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          ${vals.map((v, i) => {
+            const x = PAD + (i / (n-1 || 1)) * (W - 2*PAD);
+            const y = PAD + (1 - (v - minV) / range) * (H - 2*PAD);
+            const col = v >= 0 ? 'var(--green)' : 'var(--red)';
+            return `<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`;
+          }).join('')}
+        </svg>
+      </div>
+    </div>`;
+  }
+
+  // Day breakdown
+  html += `<div class="card"><div class="card-header"><span class="card-title">Detalhe por Dia</span></div>`;
+  for (const d of days) {
+    if (!d.worked && !d.reg.obs) continue;
+    const dow = getDOW(d.key);
+    const dayNum = parseInt(d.key.slice(8));
+    const diffClass = d.diff > 0 ? 'pos' : d.diff < 0 ? 'neg' : 'zero';
+    html += `
+    <div class="day-item">
+      <div class="day-info">
+        <div class="day-name">${String(dayNum).padStart(2,'0')} ${DOW_SHORT[dow]} <span>${fromMin(d.worked)} / ${fromMin(d.carga)}</span></div>
+      </div>
+      <span class="day-saldo ${diffClass}">${d.diff >= 0 ? '+' : ''}${fromMin(d.diff)}</span>
+    </div>`;
+  }
+  if (!days.some(d => d.worked || d.reg.obs)) {
+    html += `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Nenhum registro ainda.</div></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderConfig() {
+  const wkTotal = Object.values(SCHEDULE).reduce((a,b) => a + b.carga, 0) - SCHEDULE[0].carga;
+  let html = `
+  <div class="config-section">
+    <div class="config-section-title">Grade de Horários</div>`;
+  for (const [d, info] of Object.entries(SCHEDULE)) {
+    if (Number(d) === 0) continue;
+    const isSat = Number(d) === 6;
+    html += `
+    <div class="config-row">
+      <div>
+        <div class="config-day">${info.label} ${isSat ? '<span class="badge badge-sat">alternado</span>' : ''}</div>
+        <div class="config-schedule">${info.ref}</div>
+      </div>
+      <span class="config-hours">${fromMin(info.carga)}</span>
+    </div>`;
+  }
+  html += `
+  </div>
+  <div class="config-section">
+    <div class="config-section-title">Resumo Semanal</div>
+    <div class="config-row">
+      <div class="config-day">Seg a Sex (sem sábado)</div>
+      <span class="config-hours">${fromMin(3*60 + 7*60 + 7*60 + 7*60 + 6*60)}</span>
+    </div>
+    <div class="config-row">
+      <div class="config-day">Semana com sábado</div>
+      <span class="config-hours">${fromMin(3*60 + 7*60 + 7*60 + 7*60 + 6*60 + 3*60)}</span>
+    </div>
+  </div>
+  <div class="config-section">
+    <div class="config-section-title">Sobre o App</div>
+    <div class="config-row"><div><div class="config-day">Versão</div><div class="config-schedule">Controle de Ponto PWA v1.0</div></div></div>
+    <div class="config-row" id="btnExport" style="cursor:pointer">
+      <div><div class="config-day">Exportar dados (JSON)</div><div class="config-schedule">Faz download dos seus registros</div></div>
+      <span style="color:var(--accent2);font-size:20px">↓</span>
+    </div>
+    <div class="config-row" id="btnClearMonth" style="cursor:pointer">
+      <div><div class="config-day" style="color:var(--red)">Limpar mês atual</div><div class="config-schedule">Remove registros de ${MONTH_PT[currentMonth]}/${currentYear}</div></div>
+      <span style="color:var(--red);font-size:18px">✕</span>
+    </div>
+  </div>`;
+  return html;
+}
+
+// ── Attach event listeners after render ────────────────────────────────────
+function attachListeners() {
+  document.querySelectorAll('.day-item[data-date]').forEach(el => {
+    el.addEventListener('click', () => openModal(el.dataset.date));
+  });
+  const expBtn = document.getElementById('btnExport');
+  if (expBtn) expBtn.addEventListener('click', exportData);
+  const clrBtn = document.getElementById('btnClearMonth');
+  if (clrBtn) clrBtn.addEventListener('click', clearMonth);
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(dateStr) {
+  editingDate = dateStr;
+  const reg = registros[dateStr] || {};
+  const isSat = isSaturday(dateStr);
+  const dow = getDOW(dateStr);
+
+  document.getElementById('modalTitle').textContent = (() => {
+    const d = parseInt(dateStr.slice(8));
+    return `${String(d).padStart(2,'0')} — ${DOW_LONG[dow]}, ${dateStr.slice(5,7)}/${dateStr.slice(0,4)}`;
+  })();
+  document.getElementById('fieldDate').value = dateStr;
+  document.getElementById('e1').value = reg.e1 || '';
+  document.getElementById('s1').value = reg.s1 || '';
+  document.getElementById('e2').value = reg.e2 || '';
+  document.getElementById('s2').value = reg.s2 || '';
+  document.getElementById('fieldObs').value = reg.obs || '';
+
+  const satWrap = document.getElementById('satToggleWrap');
+  if (isSat) {
+    satWrap.style.display = 'block';
+    satToggleState = !!reg.satWork;
+    updateSatToggleUI();
+  } else {
+    satWrap.style.display = 'none';
+  }
+
+  const hasReg = !!(reg.e1 || reg.e2 || reg.obs);
+  document.getElementById('btnDelete').style.display = hasReg ? 'block' : 'none';
+  document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function openModalNew() {
+  const today = new Date().toISOString().slice(0,10);
+  openModal(today);
+}
+
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  editingDate = null;
+}
+
+function saveModal() {
+  if (!editingDate) return;
+  const isSat = isSaturday(editingDate);
+  const e1 = document.getElementById('e1').value;
+  const s1 = document.getElementById('s1').value;
+  const e2 = document.getElementById('e2').value;
+  const s2 = document.getElementById('s2').value;
+  const obs = document.getElementById('fieldObs').value;
+  const satWork = isSat ? satToggleState : undefined;
+
+  if (!e1 && !s1 && !e2 && !s2 && !obs) {
+    delete registros[editingDate];
+  } else {
+    registros[editingDate] = { e1, s1, e2, s2, obs, satWork };
+  }
+  save();
+  closeModal();
+  render();
+}
+
+function deleteModal() {
+  if (!editingDate) return;
+  if (confirm('Excluir registro deste dia?')) {
+    delete registros[editingDate];
+    save();
+    closeModal();
+    render();
+  }
+}
+
+function updateSatToggleUI() {
+  const tog = document.getElementById('satToggle');
+  if (!tog) return;
+  tog.classList.toggle('on', satToggleState);
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(registros, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ponto_${currentYear}_${String(currentMonth+1).padStart(2,'0')}.json`;
+  a.click();
+}
+function clearMonth() {
+  if (!confirm(`Limpar todos os registros de ${MONTH_PT[currentMonth]}/${currentYear}?`)) return;
+  const prefix = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+  Object.keys(registros).filter(k => k.startsWith(prefix)).forEach(k => delete registros[k]);
+  save(); render();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function init() {
+  load();
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      activeTab = t.dataset.tab;
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      render();
+    });
+  });
+
+  // Month nav
+  document.getElementById('btnPrevMonth').addEventListener('click', () => {
+    currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    render();
+  });
+  document.getElementById('btnNextMonth').addEventListener('click', () => {
+    currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    render();
+  });
+
+  // FAB
+  document.getElementById('fabBtn').addEventListener('click', openModalNew);
+
+  // Modal buttons
+  document.getElementById('btnCancel').addEventListener('click', closeModal);
+  document.getElementById('btnSave').addEventListener('click', saveModal);
+  document.getElementById('btnDelete').addEventListener('click', deleteModal);
+  document.getElementById('modalBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalBackdrop')) closeModal();
+  });
+
+  // Sat toggle
+  document.getElementById('satToggle').addEventListener('click', () => {
+    satToggleState = !satToggleState;
+    updateSatToggleUI();
+  });
+
+  // Service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  render();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
